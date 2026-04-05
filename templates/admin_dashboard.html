@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260406b') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero admin-hero">
+            <div>
+                <p class="eyebrow">Admin Control</p>
+                <h1>Population Dashboard Admin</h1>
+                <p class="hero-copy">
+                    Review system users and monitor the current dataset footprint through {{ latest_year }}.
+                </p>
+            </div>
+            <div class="hero-actions">
+                <span class="welcome-chip">Admin: {{ current_user.username }}</span>
+                <a class="ghost-btn" href="/dashboard">Refresh</a>
+                <a class="ghost-btn" href="/logout">Logout</a>
+            </div>
+        </header>
+
+        <section class="stat-grid">
+            <article class="stat-card">
+                <span class="stat-label">Registered users</span>
+                <strong class="stat-value">{{ users|length }}</strong>
+                <span class="stat-note">Accounts stored in the local database</span>
+            </article>
+            <article class="stat-card">
+                <span class="stat-label">Tracked cities</span>
+                <strong class="stat-value">{{ stats.city_count }}</strong>
+                <span class="stat-note">Available for analysis</span>
+            </article>
+            <article class="stat-card">
+                <span class="stat-label">Tracked countries</span>
+                <strong class="stat-value">{{ stats.country_count }}</strong>
+                <span class="stat-note">Represented in the population dataset</span>
+            </article>
+            <article class="stat-card accent-card">
+                <span class="stat-label">Largest city in {{ latest_year }}</span>
+                <strong class="stat-value">{{ stats.top_city }}</strong>
+                <span class="stat-note">Top city by latest recorded population</span>
+            </article>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>User Directory</h2>
+                    <p>Current accounts and assigned roles.</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.role }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

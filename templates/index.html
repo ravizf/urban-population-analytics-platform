@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Population Analytics Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260406b') }}">
+</head>
+    <body class="dashboard-body">
+    <div class="page-shell">
+        <nav class="top-nav">
+            <a class="brand-lockup" href="#dashboard">
+                <div class="brand-mark nav-brand-mark" aria-hidden="true">
+                    <span class="skyline-base"></span>
+                    <span class="skyline-building skyline-building-one"></span>
+                    <span class="skyline-building skyline-building-two"></span>
+                    <span class="skyline-building skyline-building-three"></span>
+                    <span class="chart-bar chart-bar-one"></span>
+                    <span class="chart-bar chart-bar-two"></span>
+                    <span class="chart-bar chart-bar-three"></span>
+                    <span class="chart-line"></span>
+                </div>
+                <div>
+                    <p class="eyebrow">Urban Population</p>
+                    <strong>Analytics Platform</strong>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a href="#dashboard">Dashboard</a>
+                <a href="#analytics">Analytics</a>
+                <a href="#about">About</a>
+            </div>
+        </nav>
+
+        <header id="dashboard" class="hero">
+            <div>
+                <p class="eyebrow">Urban Analytics</p>
+                <h1>Urban Population Analytics Platform</h1>
+                <p class="hero-copy">
+                    Explore population trends by city and country, compare urban growth,
+                    and inspect year-by-year changes through {{ latest_year }}.
+                </p>
+                <div class="hero-ribbon">
+                    <span id="liveClock">--:--</span>
+                    <span id="liveDate">Loading date</span>
+                    <span>Updated view through {{ latest_year }}</span>
+                </div>
+                <div class="hero-tags">
+                    <span class="hero-tag">City trends</span>
+                    <span class="hero-tag">Country rankings</span>
+                    <span class="hero-tag">Year snapshots</span>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <span class="welcome-chip">Signed in as {{ current_user.username }}</span>
+                <button type="button" class="ghost-btn" onclick="toggleDarkMode()">Dark Mode</button>
+                <button type="button" class="ghost-btn" onclick="exportSnapshotCsv()">Export Snapshot CSV</button>
+                <button type="button" class="ghost-btn" onclick="downloadChartPng('topChart', 'top-countries-chart.png')">Top Chart PNG</button>
+                <a class="ghost-btn" href="/logout">Logout</a>
+            </div>
+        </header>
+
+        <section class="stat-grid">
+            <article class="stat-card">
+                <span class="stat-label">Latest total population</span>
+                <strong class="stat-value counter" data-target="{{ stats.total_population }}">0</strong>
+                <span class="stat-note">Across all tracked cities in {{ latest_year }}</span>
+            </article>
+            <article class="stat-card">
+                <span class="stat-label">Tracked cities</span>
+                <strong class="stat-value counter" data-target="{{ stats.city_count }}">0</strong>
+                <span class="stat-note">Urban records available in the dataset</span>
+            </article>
+            <article class="stat-card">
+                <span class="stat-label">Tracked countries</span>
+                <strong class="stat-value counter" data-target="{{ stats.country_count }}">0</strong>
+                <span class="stat-note">Country-level rollups and rankings</span>
+            </article>
+            <article class="stat-card accent-card">
+                <span class="stat-label">Largest city in {{ latest_year }}</span>
+                <strong class="stat-value">{{ stats.top_city }}</strong>
+                <span class="stat-note">Highest city population in the latest snapshot</span>
+            </article>
+        </section>
+
+        <section class="panel metadata-panel reveal-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="section-kicker">Data Trust</p>
+                    <h2>Dataset and Forecast Notes</h2>
+                    <p>Keep the dashboard transparent about what is historical, what is real-time API data, and what is forecasted.</p>
+                </div>
+            </div>
+            <div class="metadata-grid">
+                <article class="detail-card">
+                    <span>Historical source</span>
+                    <strong>{{ dataset_meta.historical_source }}</strong>
+                    <small>{{ dataset_meta.historical_source_file }}</small>
+                </article>
+                <article class="detail-card">
+                    <span>Tracked range</span>
+                    <strong>{{ dataset_meta.tracked_year_range }}</strong>
+                    <small>Latest historical year: {{ dataset_meta.latest_historical_year }}</small>
+                </article>
+                <article class="detail-card">
+                    <span>Data mix</span>
+                    <strong>Historical + API + Forecast</strong>
+                    <small>{{ dataset_meta.data_mix }}</small>
+                </article>
+                <article class="detail-card">
+                    <span>Forecast method</span>
+                    <strong>Recent annual change</strong>
+                    <small>{{ dataset_meta.forecast_method }}</small>
+                </article>
+            </div>
+        </section>
+
+        <main id="analytics" class="content-grid">
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Search</p>
+                        <h2>Quick City Search</h2>
+                        <p>Search cities instantly and send a match directly to the spotlight panel.</p>
+                    </div>
+                </div>
+                <div class="search-shell">
+                    <input type="text" id="cityAutocomplete" placeholder="Start typing a city name" oninput="searchCities()">
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Ranking</p>
+                        <h2>Top 10 Countries</h2>
+                        <p>Population totals aggregated by country for a selected year.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="yearSelect">
+                            {% for year in years %}
+                            <option value="{{ year }}" {% if year == latest_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="top10ChartType" onchange="getTop10()">
+                            <option value="bar">Bar</option>
+                            <option value="line">Line</option>
+                        </select>
+                        <button onclick="getTop10()">Show ranking</button>
+                        <button type="button" class="ghost-btn" onclick="downloadChartPng('topChart', 'top-countries-chart.png')">Download PNG</button>
+                    </div>
+                </div>
+                <div class="chart-shell">
+                    <div id="top10Loading" class="chart-state"></div>
+                    <canvas id="top10Chart"></canvas>
+                </div>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Leaderboard</p>
+                        <h2>Flexible Leaderboard</h2>
+                        <p>Switch between city and country rankings for any year.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="leaderboardYear">
+                            {% for year in years %}
+                            <option value="{{ year }}" {% if year == latest_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="leaderboardMode">
+                            <option value="country">Countries</option>
+                            <option value="city">Cities</option>
+                        </select>
+                        <select id="leaderboardLimit">
+                            <option value="5">Top 5</option>
+                            <option value="10" selected>Top 10</option>
+                            <option value="15">Top 15</option>
+                        </select>
+                        <button onclick="loadLeaderboard()">Update</button>
+                    </div>
+                </div>
+                <ul id="leaderboardList" class="ranking-list leaderboard-list">
+                    <li class="list-state">Loading leaderboard...</li>
+                </ul>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Country Growth</p>
+                        <h2>Year-wise Country Growth (%)</h2>
+                        <p>Compare each country's growth percentage against the previous year.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="countryGrowthYear">
+                            {% for year in years %}
+                            {% if not loop.first %}
+                            <option value="{{ year }}" {% if year == latest_year %}selected{% endif %}>{{ year }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                        <button onclick="loadCountryGrowthByYear()">Show growth</button>
+                    </div>
+                </div>
+                <div id="countryGrowthMessage" class="result-card compact-card">Select a year to see country-wise population growth percentages.</div>
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Country</th>
+                                <th>Previous Year Population</th>
+                                <th>Current Year Population</th>
+                                <th>Growth %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="countryGrowthTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Comparison</p>
+                        <h2>Compare Cities</h2>
+                        <p>Filter cities by country, then compare their populations across matching years.</p>
+                    </div>
+                </div>
+                <div class="controls-wrap">
+                    <select id="countrySelect" onchange="filterByCountry()">
+                        <option value="">All countries</option>
+                        {% for country in countries %}
+                        <option value="{{ country }}">{{ country }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" id="citySearch" placeholder="Filter cities by name" oninput="filterCityOptions()">
+                    <select id="city1">
+                        {% for city in cities %}
+                        <option value="{{ city }}">{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="city2">
+                        {% for city in cities %}
+                        <option value="{{ city }}">{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                    <button onclick="compareCities()">Compare</button>
+                    <button type="button" class="ghost-btn" onclick="swapComparedCities()">Swap</button>
+                    <button type="button" class="ghost-btn" onclick="downloadChartPng('compareChart', 'city-comparison-chart.png')">Download PNG</button>
+                </div>
+                <div id="compareValidation" class="field-feedback is-hidden" aria-live="polite"></div>
+                <div id="compareSummary" class="result-card compact-card">Select two cities to compare population trends and insights &#128202;</div>
+                <div class="chart-shell">
+                    <div id="compareLoading" class="chart-state"></div>
+                    <canvas id="compareChart"></canvas>
+                </div>
+                <p class="source-note">Historical comparisons use the CSV-backed dataset through {{ latest_year }}.</p>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Growth</p>
+                        <h2>Growth Calculator</h2>
+                        <p>Measure how much a city changed between two years.</p>
+                    </div>
+                </div>
+                <div class="controls-wrap">
+                    <select id="growthCity">
+                        {% for city in cities %}
+                        <option value="{{ city }}">{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="startYear">
+                        {% for year in years %}
+                        <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="endYear">
+                        {% for year in years %}
+                        <option value="{{ year }}" {% if year == latest_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <button onclick="calculateGrowth()">Calculate</button>
+                </div>
+                <div id="growthValidation" class="field-feedback is-hidden" aria-live="polite"></div>
+                <div id="growthResult" class="result-card">Select a city and years to see growth insights &#128200;</div>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Spotlight</p>
+                        <h2>City Spotlight</h2>
+                        <p>Inspect one city in detail, including first, latest, highest, and lowest recorded population.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="detailCity">
+                            {% for city in cities %}
+                            <option value="{{ city }}">{{ city }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="loadCityDetails()">Load city</button>
+                        <button type="button" class="ghost-btn" onclick="copyCitySummary()">Copy summary</button>
+                        <button type="button" class="ghost-btn" onclick="downloadChartPng('cityDetailChart', 'city-spotlight-chart.png')">Download PNG</button>
+                    </div>
+                </div>
+                <div id="cityDetails" class="detail-grid">
+                    <article class="detail-card"><span>Country</span><strong id="detailCountry">-</strong></article>
+                    <article class="detail-card"><span>Latest population</span><strong id="detailLatest">-</strong></article>
+                    <article class="detail-card"><span>Peak year</span><strong id="detailPeak">-</strong></article>
+                    <article class="detail-card"><span>Lowest year</span><strong id="detailLowest">-</strong></article>
+                </div>
+                <div id="citySummary" class="result-card compact-card">Select a city to generate a quick plain-language summary &#10024;</div>
+                <div class="chart-shell">
+                    <div id="cityLoading" class="chart-state"></div>
+                    <canvas id="cityDetailChart"></canvas>
+                </div>
+                <p class="source-note">City spotlight uses historical records only and updates through {{ latest_year }}.</p>
+            </section>
+
+            <section class="panel reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Snapshot</p>
+                        <h2>Year Snapshot</h2>
+                        <p>See summary metrics and the top city rows for a single year.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="snapshotYear">
+                            {% for year in years %}
+                            <option value="{{ year }}" {% if year == latest_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="loadYearSnapshot()">Load snapshot</button>
+                    </div>
+                </div>
+                <div class="snapshot-grid">
+                    <article class="detail-card"><span>Total population</span><strong id="snapshotTotal">-</strong></article>
+                    <article class="detail-card"><span>Tracked cities</span><strong id="snapshotCities">-</strong></article>
+                    <article class="detail-card"><span>Average city size</span><strong id="snapshotAverage">-</strong></article>
+                    <article class="detail-card"><span>Top city</span><strong id="snapshotTopCity">-</strong></article>
+                </div>
+                <div class="table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>City</th>
+                                <th>Country</th>
+                                <th>Population</th>
+                            </tr>
+                        </thead>
+                        <tbody id="snapshotTableBody"></tbody>
+                    </table>
+                </div>
+                <p class="source-note">Snapshot exports only the currently loaded year from the local historical dataset.</p>
+            </section>
+
+            <section class="panel panel-wide reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Country View</p>
+                        <h2>Country Explorer</h2>
+                        <p>Track one country over time and see its largest cities in the latest year.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="insightCountry">
+                            {% for country in countries %}
+                            <option value="{{ country }}">{{ country }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="loadCountryInsights()">Explore</button>
+                        <button type="button" class="ghost-btn" onclick="downloadChartPng('countryChart', 'country-explorer-chart.png')">Download PNG</button>
+                    </div>
+                </div>
+                <div class="country-layout">
+                    <div class="chart-shell">
+                        <div id="countryLoading" class="chart-state"></div>
+                        <canvas id="countryChart"></canvas>
+                    </div>
+                    <div class="list-card">
+                        <h3 id="countryInsightTitle">Top cities</h3>
+                        <ul id="countryTopCities" class="ranking-list"></ul>
+                        <div id="countrySummary" class="mini-insight">Select a country to view its population story.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel panel-wide reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Real Data</p>
+                        <h2>World Bank Population Trend</h2>
+                        <p>Load official country population totals from the World Bank API and compare long-term growth using real-world data.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="realDataCountry">
+                            {% for country in real_data_countries %}
+                            <option value="{{ country }}" {% if country == "India" %}selected{% endif %}>{{ country }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="loadRealPopulationTrend()">Load real data</button>
+                        <button type="button" class="ghost-btn" onclick="downloadChartPng('worldPopulationChart', 'world-bank-population-chart.png')">Download PNG</button>
+                    </div>
+                </div>
+                <div id="realDataSummary" class="result-card compact-card">Load a country to pull real population totals from the World Bank API.</div>
+                <div class="chart-shell">
+                    <div id="realDataLoading" class="chart-state"></div>
+                    <canvas id="worldPopulationChart"></canvas>
+                </div>
+                <p class="source-note">Source: World Bank indicator <code>SP.POP.TOTL</code> for total population.</p>
+            </section>
+
+            <section class="panel panel-wide reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Forecast</p>
+                        <h2>Population Forecast</h2>
+                        <p>Project the next few years from the historical dataset. Forecast values are estimates, not real recorded data.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="forecastMode" onchange="updateForecastOptions()">
+                            <option value="city">City forecast</option>
+                            <option value="country">Country forecast</option>
+                        </select>
+                        <select id="forecastName"></select>
+                        <select id="forecastYearsAhead">
+                            <option value="2">Next 2 years</option>
+                            <option value="3" selected>Next 3 years</option>
+                            <option value="4">Next 4 years</option>
+                            <option value="5">Next 5 years</option>
+                        </select>
+                        <button onclick="loadPopulationForecast()">Generate forecast</button>
+                        <button type="button" class="ghost-btn" onclick="downloadChartPng('forecastChart', 'population-forecast-chart.png')">Download PNG</button>
+                    </div>
+                </div>
+                <div id="forecastValidation" class="field-feedback is-hidden" aria-live="polite"></div>
+                <div id="forecastSummary" class="result-card compact-card">Choose a city or country to forecast the next few years.</div>
+                <div class="chart-shell">
+                    <div id="forecastLoading" class="chart-state"></div>
+                    <canvas id="forecastChart"></canvas>
+                </div>
+                <p class="source-note">Forecast styling uses solid history through {{ latest_year }} and dashed estimate lines after that year.</p>
+            </section>
+
+            <section class="panel panel-wide reveal-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="section-kicker">Projection Comparison</p>
+                        <h2>Population Visualization and Comparison Through {{ projected_target_year }}</h2>
+                        <p>Compare two cities or two countries on one chart and extend both lines beyond the historical dataset using a labeled forecast.</p>
+                    </div>
+                    <div class="inline-controls">
+                        <select id="projectionMode" onchange="updateProjectionOptions()">
+                            <option value="city">Cities</option>
+                            <option value="country">Countries</option>
+                        </select>
+                        <select id="projectionFirst"></select>
+                        <select id="projectionSecond"></select>
+                        <button onclick="loadProjectedComparison()">Compare to {{ projected_target_year }}</button>
+                        <button type="button" class="ghost-btn" onclick="downloadChartPng('projectionCompareChart', 'population-projection-comparison-chart.png')">Download PNG</button>
+                    </div>
+                </div>
+                <div id="projectionValidation" class="field-feedback is-hidden" aria-live="polite"></div>
+                <div id="projectionSummary" class="result-card compact-card">Choose two cities or countries to compare through {{ projected_target_year }}.</div>
+                <div class="chart-shell">
+                    <div id="projectionLoading" class="chart-state"></div>
+                    <canvas id="projectionCompareChart"></canvas>
+                </div>
+                <p class="source-note">Historical values now run through {{ latest_year }}. Any values after that year are forecast estimates.</p>
+            </section>
+        </main>
+
+        <section id="about" class="panel about-panel reveal-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="section-kicker">About</p>
+                    <h2>Platform Overview</h2>
+                    <p>Urban Population Analytics Platform helps explore city and country population trends through interactive analytics, year snapshots, and quick visual exports.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        window.initialData = {
+            latestYear: {{ latest_year|tojson }},
+            projectedTargetYear: {{ projected_target_year|tojson }},
+            cities: {{ cities|tojson }},
+            countries: {{ countries|tojson }},
+            datasetMeta: {{ dataset_meta|tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='script.js', v='20260406b') }}"></script>
+</body>
+</html>

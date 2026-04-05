@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Urban Population Analytics Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260406b') }}">
+</head>
+<body class="auth-body">
+    <div class="auth-shell">
+        <div class="auth-card">
+            <div class="brand-mark" aria-hidden="true">
+                <span class="skyline-base"></span>
+                <span class="skyline-building skyline-building-one"></span>
+                <span class="skyline-building skyline-building-two"></span>
+                <span class="skyline-building skyline-building-three"></span>
+                <span class="chart-bar chart-bar-one"></span>
+                <span class="chart-bar chart-bar-two"></span>
+                <span class="chart-bar chart-bar-three"></span>
+                <span class="chart-line"></span>
+            </div>
+            <div class="auth-brand-copy">
+                <p class="eyebrow">Urban Population</p>
+                <strong>Analytics Platform</strong>
+            </div>
+            <h1>Sign In to Continue</h1>
+            <p class="hero-copy auth-copy">Access city comparisons, growth insights, and country analytics from one premium dashboard.</p>
+
+            <div id="authClientError" class="auth-error is-hidden" aria-live="polite"></div>
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" class="auth-form" novalidate onsubmit="return validateAuthForm(this)">
+                <label class="field-shell">
+                    <span class="field-icon" aria-hidden="true">&#128100;</span>
+                    <input type="text" name="username" placeholder=" " required>
+                    <span class="field-label">Username</span>
+                </label>
+                <label class="field-shell">
+                    <span class="field-icon" aria-hidden="true">&#128274;</span>
+                    <input type="password" name="password" placeholder=" " required>
+                    <span class="field-label">Password</span>
+                </label>
+                <div class="auth-support">
+                    <span>Secure access to your analytics workspace</span>
+                    <a href="/register">Get Started</a>
+                </div>
+                <button type="submit">Sign In</button>
+            </form>
+
+            <p class="auth-link-line">New here? <a href="/register">Create an account</a></p>
+        </div>
+
+        <aside class="auth-preview">
+            <div>
+                <p class="eyebrow">Live Preview</p>
+                <h2>Analyze urban growth with powerful data insights</h2>
+                <p class="preview-copy">Review trend snapshots, compare cities side by side, and surface plain-language insights from a real urban population dataset.</p>
+            </div>
+            <div class="preview-grid">
+                <div class="preview-insight">
+                    <strong>Sample insight</strong>
+                    Delhi population grew 23% across the last tracked decade in the local dataset.
+                </div>
+                <div class="preview-stat">
+                    <strong>What you can explore</strong>
+                    Country rankings, city spotlight, year snapshots, and growth percentages.
+                </div>
+            </div>
+            <div class="preview-chart" aria-hidden="true">
+                <strong>Analytics preview</strong>
+                <div class="preview-bars">
+                    <span class="preview-bar" style="height: 42%;"></span>
+                    <span class="preview-bar" style="height: 68%;"></span>
+                    <span class="preview-bar" style="height: 84%;"></span>
+                    <span class="preview-bar" style="height: 58%;"></span>
+                </div>
+            </div>
+        </aside>
+    </div>
+    <script>
+        function validateAuthForm(form) {
+            const errorNode = document.getElementById("authClientError");
+            const username = form.username.value.trim();
+            const password = form.password.value.trim();
+
+            if (!username || !password) {
+                errorNode.textContent = "Please enter both username and password.";
+                errorNode.classList.remove("is-hidden");
+                return false;
+            }
+
+            errorNode.classList.add("is-hidden");
+            errorNode.textContent = "";
+            return true;
+        }
+    </script>
+</body>
+</html>
